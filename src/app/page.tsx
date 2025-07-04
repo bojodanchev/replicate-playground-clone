@@ -1,31 +1,20 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import Image from 'next/image';
+import type { PutBlobResult } from '@vercel/blob';
 
 export default function HomePage() {
+  const inputFileRef = useRef<HTMLInputElement>(null);
   const [prompt, setPrompt] = useState('');
-  const [image, setImage] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [blob, setBlob] = useState<PutBlobResult | null>(null);
   const [imageUrl, setImageUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setImage(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!image) {
+    if (!blob) {
       setError('Please upload an image first.');
       return;
     }
@@ -39,11 +28,12 @@ export default function HomePage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ prompt, image: imagePreview }),
+        body: JSON.stringify({ prompt, imageUrl: blob.url }),
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorData = await response.json();
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
       }
 
       const data = await response.json();
@@ -63,6 +53,36 @@ export default function HomePage() {
     }
   };
 
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    event.preventDefault();
+    if (!inputFileRef.current?.files) {
+      throw new Error("No file selected");
+    }
+    const file = inputFileRef.current.files[0];
+
+    setLoading(true);
+    try {
+      const response = await fetch(
+        `/api/upload?filename=${file.name}`,
+        {
+          method: 'POST',
+          body: file,
+        },
+      );
+      const newBlob = (await response.json()) as PutBlobResult;
+      setBlob(newBlob);
+    } catch (err) {
+        if (err instanceof Error) {
+            setError(`Failed to upload image: ${err.message}`);
+        } else {
+            setError('An unknown error occurred during upload.');
+        }
+    } finally {
+        setLoading(false);
+    }
+  };
+
+
   return (
     <main className="mx-auto flex min-h-screen max-w-xl flex-col items-center p-24">
       <h1 className="text-center text-4xl font-bold">
@@ -80,17 +100,19 @@ export default function HomePage() {
           id="image-upload"
           name="image-upload"
           type="file"
-          accept="image/*"
-          onChange={handleImageChange}
+          required
+          ref={inputFileRef}
+          onChange={handleFileChange}
           className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:rounded-md file:border-0 file:bg-gray-100 file:px-4 file:py-2 file:text-sm file:font-semibold hover:file:bg-gray-200"
+          disabled={loading}
         />
       </div>
 
-      {imagePreview && (
+      {blob && (
         <div className="mt-8">
           <h2 className="text-xl font-semibold">Image Preview:</h2>
           <img
-            src={imagePreview}
+            src={blob.url}
             alt="Image preview"
             className="mt-4 rounded-md"
             style={{ maxWidth: '100%', maxHeight: '400px' }}
@@ -105,12 +127,12 @@ export default function HomePage() {
           placeholder="Enter a prompt to modify the image..."
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
-          disabled={loading || !image}
+          disabled={loading || !blob}
         />
         <button
           type="submit"
           className="rounded-r-md bg-black px-4 py-2 text-white"
-          disabled={loading || !image}
+          disabled={loading || !blob}
         >
           {loading ? 'Generating...' : 'Generate'}
         </button>
