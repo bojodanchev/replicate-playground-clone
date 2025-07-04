@@ -111,11 +111,12 @@ export default function HomePage() {
       {blob && (
         <div className="mt-8">
           <h2 className="text-xl font-semibold">Image Preview:</h2>
-          <img
+          <Image
             src={blob.url}
             alt="Image preview"
-            className="mt-4 rounded-md"
-            style={{ maxWidth: '100%', maxHeight: '400px' }}
+            width={400}
+            height={400}
+            className="mt-4 h-auto w-full rounded-md"
           />
         </div>
       )}
