@@ -1,4 +1,4 @@
-import { handleUpload, type HandleUploadBody } from '@vercel/blob/server';
+import { handleUpload, type HandleUploadBody } from '@vercel/blob/client';
 import { NextResponse } from 'next/server';
 
 export async function POST(request: Request): Promise<NextResponse> {
@@ -8,17 +8,16 @@ export async function POST(request: Request): Promise<NextResponse> {
     const jsonResponse = await handleUpload({
       body,
       request,
-      onBeforeGenerateToken: async (pathname) => {
-        if (!process.env.BLOB_READ_WRITE_TOKEN) {
-          throw new Error('Vercel Blob token is not configured.');
-        }
-
+      onBeforeGenerateToken: async (pathname: string) => {
+        // In a real-world application, you would add your own authentication logic here.
+        // For now, we'll just allow all uploads.
         return {
           allowedContentTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
-          token: process.env.BLOB_READ_WRITE_TOKEN,
         };
       },
       onUploadCompleted: async ({ blob, tokenPayload }) => {
+        // This is where you would add your own logic to update your database
+        // with the new blob information.
         console.log('File upload completed:', blob.url);
       },
     });
