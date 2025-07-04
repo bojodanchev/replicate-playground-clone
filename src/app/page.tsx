@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react';
 import Image from 'next/image';
+import { upload } from '@vercel/blob/client';
 import type { PutBlobResult } from '@vercel/blob';
 
 export default function HomePage() {
@@ -33,7 +34,7 @@ export default function HomePage() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: `HTTP error! status: ${response.status}` }));
-        throw new Error(errorData.message || errorData.error);
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
       }
 
       const data = await response.json();
@@ -55,29 +56,21 @@ export default function HomePage() {
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     event.preventDefault();
-    if (!inputFileRef.current?.files) {
-      throw new Error("No file selected");
+    const file = event.currentTarget.files?.[0];
+    if (!file) {
+      setError("No file selected.");
+      return;
     }
-    const file = inputFileRef.current.files[0];
 
     setLoading(true);
     setError('');
-    try {
-      const response = await fetch(
-        `/api/upload?filename=${file.name}`,
-        {
-          method: 'POST',
-          body: file,
-        },
-      );
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: `HTTP error! status: ${response.status}` }));
-        throw new Error(errorData.message || errorData.error);
-      }
-      
-      const newBlob = (await response.json()) as PutBlobResult;
-      setBlob(newBlob);
+    try {
+        const newBlob = await upload(file.name, file, {
+            access: 'public',
+            handleUploadUrl: '/api/upload',
+        });
+        setBlob(newBlob);
     } catch (err) {
         if (err instanceof Error) {
             setError(`Failed to upload image: ${err.message}`);

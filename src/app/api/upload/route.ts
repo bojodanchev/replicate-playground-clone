@@ -1,28 +1,34 @@
-import { put } from '@vercel/blob';
+import { handleUpload, type HandleUploadBody } from '@vercel/blob/client';
 import { NextResponse } from 'next/server';
- 
-export async function POST(request: Request): Promise<NextResponse> {
-  const { searchParams } = new URL(request.url);
-  const filename = searchParams.get('filename');
- 
-  if (!filename) {
-    return NextResponse.json({ error: 'Filename is required.' }, { status: 400 });
-  }
 
-  if (!request.body) {
-    return NextResponse.json({ error: 'No file to upload.' }, { status: 400 });
-  }
- 
+export async function POST(request: Request): Promise<NextResponse> {
+  const body = (await request.json()) as HandleUploadBody;
+
   try {
-    const blob = await put(filename, request.body, {
-      access: 'public',
+    const jsonResponse = await handleUpload({
+      body,
+      request,
+      onBeforeGenerateToken: async (pathname: string) => {
+        // This is where you would add your own authentication logic.
+        // For now, we'll just return the token directly.
+        
+        if (!process.env.BLOB_READ_WRITE_TOKEN) {
+            throw new Error('Vercel Blob token is not configured.');
+        }
+
+        return {
+          allowedContentTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
+          token: process.env.BLOB_READ_WRITE_TOKEN,
+        };
+      },
+      onUploadCompleted: async ({ blob, tokenPayload }) => {
+        console.log('File upload completed:', blob.url);
+      },
     });
-    return NextResponse.json(blob);
+
+    return NextResponse.json(jsonResponse);
   } catch (error) {
-    console.error('Error uploading to Vercel Blob:', error);
-    if (error instanceof Error) {
-      return NextResponse.json({ error: 'Error uploading file.', message: error.message }, { status: 500 });
-    }
-    return NextResponse.json({ error: 'An unknown error occurred during upload.' }, { status: 500 });
+    const message = (error as Error).message;
+    return NextResponse.json({ error: message }, { status: 400 });
   }
 }
