@@ -5,12 +5,30 @@ import Image from 'next/image';
 
 export default function HomePage() {
   const [prompt, setPrompt] = useState('');
+  const [image, setImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageUrl, setImageUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setImage(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (!image) {
+      setError('Please upload an image first.');
+      return;
+    }
     setLoading(true);
     setError('');
     setImageUrl('');
@@ -21,7 +39,7 @@ export default function HomePage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify({ prompt, image: imagePreview }),
       });
 
       if (!response.ok) {
@@ -48,29 +66,51 @@ export default function HomePage() {
   return (
     <main className="mx-auto flex min-h-screen max-w-xl flex-col items-center p-24">
       <h1 className="text-center text-4xl font-bold">
-        Replicate Playground Clone
+        Image-to-Image Playground
       </h1>
       <p className="mt-4 text-center text-lg text-gray-500">
-        Generate images with the{' '}
-        <code className="rounded bg-gray-100 p-1 font-mono text-sm">
-          black-forest-labs/flux-kontext-pro
-        </code>{' '}
-        model.
+        Upload an image and use a text prompt to modify it.
       </p>
+
+      <div className="mt-8 w-full">
+        <label htmlFor="image-upload" className="block text-sm font-medium text-gray-700">
+          Upload Image
+        </label>
+        <input
+          id="image-upload"
+          name="image-upload"
+          type="file"
+          accept="image/*"
+          onChange={handleImageChange}
+          className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:rounded-md file:border-0 file:bg-gray-100 file:px-4 file:py-2 file:text-sm file:font-semibold hover:file:bg-gray-200"
+        />
+      </div>
+
+      {imagePreview && (
+        <div className="mt-8">
+          <h2 className="text-xl font-semibold">Image Preview:</h2>
+          <img
+            src={imagePreview}
+            alt="Image preview"
+            className="mt-4 rounded-md"
+            style={{ maxWidth: '100%', maxHeight: '400px' }}
+          />
+        </div>
+      )}
 
       <form className="mt-8 flex w-full" onSubmit={handleSubmit}>
         <input
           type="text"
           className="flex-grow rounded-l-md border border-gray-300 p-2 focus:border-black focus:outline-none focus:ring-0"
-          placeholder="Enter a prompt..."
+          placeholder="Enter a prompt to modify the image..."
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
-          disabled={loading}
+          disabled={loading || !image}
         />
         <button
           type="submit"
           className="rounded-r-md bg-black px-4 py-2 text-white"
-          disabled={loading}
+          disabled={loading || !image}
         >
           {loading ? 'Generating...' : 'Generate'}
         </button>

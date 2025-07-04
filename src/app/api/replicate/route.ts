@@ -13,18 +13,23 @@ export async function POST(req: Request) {
     );
   }
 
-  const { prompt } = await req.json();
+  const { prompt, image } = await req.json();
 
   if (!prompt) {
     return NextResponse.json({ error: 'Prompt is required' }, { status: 400 });
   }
 
+  if (!image) {
+    return NextResponse.json({ error: 'Image is required' }, { status: 400 });
+  }
+
   try {
     const output = await replicate.run(
-      'black-forest-labs/flux-kontext-pro:6a5253a2b14421a9957279184d0b166034169625377f1e31d4d803387b99e743',
+      'stability-ai/sdxl:39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b',
       {
         input: {
           prompt,
+          image,
         },
       }
     );
