@@ -1,4 +1,4 @@
-import { handleUpload, type HandleUploadBody } from '@vercel/blob/client';
+import { handleUpload, type HandleUploadBody } from '@vercel/blob/server';
 import { NextResponse } from 'next/server';
 
 export async function POST(request: Request): Promise<NextResponse> {
@@ -9,9 +9,6 @@ export async function POST(request: Request): Promise<NextResponse> {
       body,
       request,
       onBeforeGenerateToken: async (pathname: string) => {
-        // This is where you would add your own authentication logic.
-        // For now, we'll just return the token directly.
-        
         if (!process.env.BLOB_READ_WRITE_TOKEN) {
             throw new Error('Vercel Blob token is not configured.');
         }
