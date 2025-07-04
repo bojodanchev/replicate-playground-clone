@@ -1,4 +1,4 @@
-import { handleUpload, type HandleUploadBody } from '@vercel/blob';
+import { handleUpload, type HandleUploadBody } from '@vercel/blob/server';
 import { NextResponse } from 'next/server';
 
 export async function POST(request: Request): Promise<NextResponse> {
@@ -8,9 +8,9 @@ export async function POST(request: Request): Promise<NextResponse> {
     const jsonResponse = await handleUpload({
       body,
       request,
-      onBeforeGenerateToken: async (_pathname: string) => {
+      onBeforeGenerateToken: async (pathname) => {
         if (!process.env.BLOB_READ_WRITE_TOKEN) {
-            throw new Error('Vercel Blob token is not configured.');
+          throw new Error('Vercel Blob token is not configured.');
         }
 
         return {
@@ -18,7 +18,7 @@ export async function POST(request: Request): Promise<NextResponse> {
           token: process.env.BLOB_READ_WRITE_TOKEN,
         };
       },
-      onUploadCompleted: async ({ blob, _tokenPayload }) => {
+      onUploadCompleted: async ({ blob, tokenPayload }) => {
         console.log('File upload completed:', blob.url);
       },
     });
