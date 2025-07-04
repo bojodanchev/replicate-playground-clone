@@ -32,8 +32,8 @@ export default function HomePage() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+        const errorData = await response.json().catch(() => ({ error: `HTTP error! status: ${response.status}` }));
+        throw new Error(errorData.message || errorData.error);
       }
 
       const data = await response.json();
@@ -61,6 +61,7 @@ export default function HomePage() {
     const file = inputFileRef.current.files[0];
 
     setLoading(true);
+    setError('');
     try {
       const response = await fetch(
         `/api/upload?filename=${file.name}`,
@@ -69,6 +70,12 @@ export default function HomePage() {
           body: file,
         },
       );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: `HTTP error! status: ${response.status}` }));
+        throw new Error(errorData.message || errorData.error);
+      }
+      
       const newBlob = (await response.json()) as PutBlobResult;
       setBlob(newBlob);
     } catch (err) {
